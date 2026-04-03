@@ -1,0 +1,15 @@
+# ═══════════════════════════════════════════════════════════
+#  AI Integrative Multilingual Telehealth Orchestrator
+#  Python Dependencies
+# ═══════════════════════════════════════════════════════════
+
+# ── Core Framework ──────────────────────────────────────
+fastapi
+uvicorn[standard]
+pydantic>=2.0
+
+# ── Configuration ───────────────────────────────────────
+python-dotenv
+
+# ── Utilities ───────────────────────────────────────────
+python-dateutil

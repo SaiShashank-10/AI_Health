@@ -1,0 +1,15 @@
+venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+*.md
+!README.md
+.env
+.vscode/
+.idea/
+*.egg-info/
+dist/
+build/
+test_pipeline.py
+.gemini/
