@@ -14,13 +14,13 @@ Endpoints:
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
-import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import settings
@@ -32,6 +32,7 @@ from backend.schemas.recommendation import (
     FeedbackResponse,
 )
 from backend.schemas.common import PipelineStatus
+from backend.schemas.common import TextTranslationRequest, TextTranslationResponse
 from backend.pipeline import (
     run_pipeline,
     store_session,
@@ -44,6 +45,8 @@ from backend.knowledge.glossary import (
     get_glossary_for_language,
     get_all_supported_languages,
 )
+from backend.services.translation_service import translate_texts
+from backend.services.input_validation import validate_intake_payload
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -93,6 +96,26 @@ async def root():
     return HTMLResponse(content="<h1>Frontend not found. Visit /docs for API.</h1>")
 
 
+@app.get("/sw.js", include_in_schema=False)
+async def service_worker():
+    """Serve the Service Worker script from the root scope."""
+    sw_path = _FRONTEND_DIR / "sw.js"
+    if sw_path.exists():
+        from fastapi.responses import FileResponse
+        return FileResponse(path=sw_path, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="Service worker not found")
+
+
+@app.get("/manifest.json", include_in_schema=False)
+async def manifest():
+    """Serve the PWA Web App Manifest."""
+    manifest_path = _FRONTEND_DIR / "manifest.json"
+    if manifest_path.exists():
+        from fastapi.responses import FileResponse
+        return FileResponse(path=manifest_path, media_type="application/manifest+json")
+    raise HTTPException(status_code=404, detail="Manifest not found")
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  HEALTH CHECK
 # ═══════════════════════════════════════════════════════════════════
@@ -132,6 +155,19 @@ async def submit_intake(intake: PatientIntake):
 
     Returns a session ID to retrieve the full recommendation.
     """
+    # Validate every user-provided text field before running AI pipeline.
+    validation = validate_intake_payload(intake)
+    if not validation.is_valid:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Invalid or low-quality input detected. Please provide clear symptom details.",
+                "reasons": validation.reasons,
+                "validation_confidence": validation.confidence,
+                "model_used": validation.model_used,
+            },
+        )
+
     # Run the pipeline
     state = run_pipeline(intake)
 
@@ -224,6 +260,105 @@ async def get_recommendation(session_id: str):
     return state.recommendation
 
 
+def _build_final_report(recommendation: CareRecommendation) -> dict[str, Any]:
+    """Build a concise, factual report from the persisted recommendation object."""
+    primary_step = next(
+        (step for step in recommendation.care_path if step.priority == "primary"),
+        recommendation.care_path[0] if recommendation.care_path else None,
+    )
+
+    key_items: list[str] = []
+    for segment in recommendation.plan_segments:
+        for item in (segment.recommendations or []):
+            if item not in key_items:
+                key_items.append(item)
+        for item in (segment.medications or []):
+            if item not in key_items:
+                key_items.append(item)
+        for item in (segment.lifestyle or []):
+            if item not in key_items:
+                key_items.append(item)
+    key_recommendations = key_items[:8]
+
+    warnings = [
+        {
+            "severity": warning.severity,
+            "message": warning.message,
+            "resolution": warning.resolution,
+        }
+        for warning in recommendation.warnings
+    ]
+
+    top_evidence = sorted(
+        recommendation.provenance,
+        key=lambda ev: ((ev.reliability_tier or 99), -(ev.year or 0)),
+    )[:5]
+    evidence = [
+        {
+            "title": item.title,
+            "source_type": item.source_type,
+            "year": item.year,
+            "reliability_tier": item.reliability_tier,
+            "url": item.url,
+        }
+        for item in top_evidence
+    ]
+
+    doctor = recommendation.doctor_recommendation
+    care_team = {
+        "doctor_name": doctor.doctor_name if doctor else None,
+        "specialty": doctor.specialty if doctor else None,
+        "consultation_mode": doctor.consultation_mode if doctor else None,
+        "next_available_window": doctor.next_available_window if doctor else None,
+        "urgency_note": doctor.urgency_note if doctor else None,
+    }
+
+    return {
+        "session_id": recommendation.session_id,
+        "generated_at": recommendation.timestamp.isoformat(),
+        "risk_level": recommendation.risk_level,
+        "risk_confidence": recommendation.risk_confidence,
+        "risk_score": recommendation.risk_score,
+        "triage_justification": recommendation.triage_justification,
+        "care_team": care_team,
+        "primary_care_path": {
+            "modality": primary_step.modality if primary_step else None,
+            "specialist_type": primary_step.specialist_type if primary_step else None,
+            "priority": primary_step.priority if primary_step else None,
+            "reason": primary_step.reason if primary_step else None,
+        },
+        "key_recommendations": key_recommendations,
+        "safety_warnings": warnings,
+        "evidence": evidence,
+        "summary": {
+            "care_steps": len(recommendation.care_path),
+            "plan_segments": len(recommendation.plan_segments),
+            "warnings": len(recommendation.warnings),
+            "sources": len(recommendation.provenance),
+        },
+    }
+
+
+@app.get(
+    "/api/final-report/{session_id}",
+    tags=["Pipeline"],
+    summary="Get concise final report with factual fields only",
+)
+async def get_final_report(session_id: str):
+    """Return a concise report built from real recommendation data for UI and exports."""
+    state = get_session(session_id)
+    if not state:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+
+    if not state.recommendation:
+        raise HTTPException(
+            status_code=202,
+            detail="Pipeline is still processing. Try again shortly.",
+        )
+
+    return _build_final_report(state.recommendation)
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  CLINICIAN FEEDBACK
 # ═══════════════════════════════════════════════════════════════════
@@ -313,6 +448,28 @@ async def list_languages():
         "supported_languages": get_all_supported_languages(),
         "default": settings.DEFAULT_LANGUAGE,
     }
+
+
+@app.post(
+    "/api/translate/text",
+    response_model=TextTranslationResponse,
+    tags=["System"],
+    summary="Translate a batch of text snippets using the medical glossary",
+)
+async def translate_text_batch(payload: TextTranslationRequest):
+    """Translate arbitrary text snippets into a supported language."""
+    lang_code = payload.language_code.lower().strip()
+    if lang_code not in settings.SUPPORTED_LANGUAGES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported language '{lang_code}'. Supported: {settings.SUPPORTED_LANGUAGES}",
+        )
+
+    translated_texts = translate_texts(payload.texts, lang_code)
+    return TextTranslationResponse(
+        language_code=lang_code,
+        translated_texts=translated_texts,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════

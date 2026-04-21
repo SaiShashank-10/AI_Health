@@ -80,8 +80,8 @@ class PatientIntake(BaseModel):
 
     # ── Preferences ─────────────────────────────────────────
     modality_preferences: list[str] = Field(
-        default_factory=lambda: ["allopathy"],
-        description="Requested medical systems",
+        default_factory=list,
+        description="Optional compatibility hint retained for API backward compatibility; the AI now infers treatment direction from the full intake profile.",
         examples=[["allopathy", "ayurveda"]],
     )
 
@@ -127,8 +127,7 @@ class PatientIntake(BaseModel):
             else:
                 # Be lenient — skip unrecognized but warn
                 pass
-        # Default to allopathy if nothing valid
-        return cleaned if cleaned else ["allopathy"]
+        return cleaned
 
 
 class IntakeResponse(BaseModel):

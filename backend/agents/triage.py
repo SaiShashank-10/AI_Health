@@ -13,6 +13,9 @@ weighting, and duration analysis.
 from __future__ import annotations
 
 from datetime import datetime
+from functools import lru_cache
+
+from backend.config import settings
 
 from backend.schemas.common import (
     RiskLevel,
@@ -27,6 +30,11 @@ from backend.knowledge.safety_rules import (
     check_emergency_keywords,
     check_emergency_combinations,
 )
+
+try:
+    from transformers import pipeline as hf_pipeline  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    hf_pipeline = None
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -102,11 +110,27 @@ DURATION_SCORES: dict[str, float] = {
 
 # Risk level thresholds (total score → risk level)
 RISK_THRESHOLDS = {
-    "emergent": 60.0,
-    "urgent": 35.0,
-    "routine": 15.0,
-    # Below 15 → self-care
+    "emergent": 80.0,
+    "urgent": 55.0,
+    "routine": 30.0,
+    # Below 30 → self-care
 }
+
+RISK_LABELS = [
+    "immediate emergency care",
+    "urgent same-day medical evaluation",
+    "routine clinic visit",
+    "self-care / monitoring at home",
+]
+
+RISK_LABEL_TO_SCORE = {
+    "immediate emergency care": 95.0,
+    "urgent same-day medical evaluation": 68.0,
+    "routine clinic visit": 40.0,
+    "self-care / monitoring at home": 12.0,
+}
+
+RISK_SCORE_BLEND_WEIGHT = 0.75
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -201,6 +225,101 @@ def _compute_duration_score(duration_days: int | None) -> tuple[float, list[str]
     return score, [f"Duration: {duration_days} days ({cat}, +{score} pts)"]
 
 
+@lru_cache(maxsize=1)
+def _get_hf_triage_classifier():
+    if hf_pipeline is None or not settings.ENABLE_HF_TRIAGE_MODEL:
+        return None
+    try:
+        return hf_pipeline("zero-shot-classification", model=settings.HF_TRIAGE_MODEL)
+    except Exception:
+        return None
+
+
+def _build_risk_profile_text(
+    intake: PatientIntake,
+    symptoms: list[SymptomObject],
+) -> str:
+    symptom_lines: list[str] = []
+    for symptom in symptoms[:8]:
+        parts = [symptom.name]
+        if symptom.severity:
+            parts.append(f"severity={symptom.severity.value}")
+        if symptom.body_system:
+            parts.append(f"system={symptom.body_system}")
+        if symptom.duration_days is not None:
+            parts.append(f"duration={symptom.duration_days}d")
+        symptom_lines.append(", ".join(parts))
+
+    profile_bits = [
+        f"Patient age: {intake.age}",
+        f"Sex: {intake.sex}",
+        f"Primary symptom text: {intake.symptom_text}",
+    ]
+    if intake.duration_days is not None:
+        profile_bits.append(f"Symptom duration: {intake.duration_days} days")
+    if intake.comorbidities:
+        profile_bits.append(f"Comorbidities: {', '.join(intake.comorbidities)}")
+    if intake.medications:
+        profile_bits.append(f"Current medications: {', '.join(intake.medications)}")
+    if intake.allergies:
+        profile_bits.append(f"Allergies: {', '.join(intake.allergies)}")
+    if intake.family_history:
+        profile_bits.append(f"Family history: {', '.join(intake.family_history)}")
+    if intake.lifestyle_notes:
+        profile_bits.append(f"Lifestyle notes: {intake.lifestyle_notes}")
+    if intake.modality_preferences:
+        profile_bits.append(
+            f"Preferred modalities: {', '.join(intake.modality_preferences)}"
+        )
+
+    if symptom_lines:
+        profile_bits.append("Normalized symptoms: " + " | ".join(symptom_lines))
+
+    return "\n".join(profile_bits)[:2500]
+
+
+def _extract_model_risk_score(profile_text: str) -> tuple[float | None, float | None, str, list[str]]:
+    classifier = _get_hf_triage_classifier()
+    if classifier is None:
+        return None, None, "rule-only", []
+
+    result = classifier(profile_text, candidate_labels=RISK_LABELS, multi_label=False)
+    scores = {
+        str(label): float(score)
+        for label, score in zip(result["labels"], result["scores"])
+    }
+    ranked_labels = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    top_label, top_prob = ranked_labels[0]
+    second_prob = ranked_labels[1][1] if len(ranked_labels) > 1 else 0.0
+    model_score = sum(
+        scores.get(label, 0.0) * RISK_LABEL_TO_SCORE[label]
+        for label in RISK_LABELS
+    )
+    explanation = [
+        f"ML triage model: {settings.HF_TRIAGE_MODEL}",
+        f"Top model label: {top_label} ({top_prob:.2f})",
+    ]
+    if second_prob:
+        explanation.append(f"Model margin: {top_prob - second_prob:.2f}")
+    return model_score, top_prob, settings.HF_TRIAGE_MODEL, explanation
+
+
+def _normalize_heuristic_score(raw_score: float) -> float:
+    return max(0.0, min(100.0, raw_score * 1.55))
+
+
+def _blend_risk_scores(
+    model_score: float | None,
+    heuristic_score: float,
+) -> float:
+    if model_score is None:
+        return heuristic_score
+    return (
+        (RISK_SCORE_BLEND_WEIGHT * model_score)
+        + ((1.0 - RISK_SCORE_BLEND_WEIGHT) * heuristic_score)
+    )
+
+
 def _score_to_risk_level(score: float) -> RiskLevel:
     """Convert numeric score to risk level."""
     if score >= RISK_THRESHOLDS["emergent"]:
@@ -214,7 +333,10 @@ def _score_to_risk_level(score: float) -> RiskLevel:
 
 
 def _compute_confidence(
-    score: float, risk_level: RiskLevel, num_symptoms: int
+    score: float,
+    risk_level: RiskLevel,
+    num_symptoms: int,
+    model_top_prob: float | None = None,
 ) -> float:
     """
     Compute confidence score for the triage decision.
@@ -234,9 +356,13 @@ def _compute_confidence(
         position = 1.0
     else:
         position = (score - low) / range_size
+        position = max(0.0, min(1.0, position))
 
     # Base confidence from position within range
-    base_conf = 0.5 + (position * 0.3)
+    base_conf = 0.45 + (position * 0.25)
+
+    if model_top_prob is not None:
+        base_conf += min(0.18, model_top_prob * 0.18)
 
     # Symptom count bonus (more data = more confident)
     data_bonus = min(0.15, num_symptoms * 0.03)
@@ -252,7 +378,7 @@ def _compute_confidence(
 def run_triage(
     intake: PatientIntake,
     symptom_objects: list[SymptomObject],
-) -> tuple[RiskLevel, float, str, list[str], AgentTrace]:
+) -> tuple[RiskLevel, float, str, list[str], float, AgentTrace]:
     """
     Perform risk-stratified triage.
 
@@ -261,11 +387,11 @@ def run_triage(
         symptom_objects: Normalized symptoms from the Normalization Agent.
 
     Returns:
-        (risk_level, confidence, justification, risk_factors, agent_trace)
+        (risk_level, confidence, justification, risk_factors, risk_score, agent_trace)
     """
     started_at = datetime.utcnow()
     all_factors: list[str] = []
-    total_score: float = 0.0
+    heuristic_raw_score: float = 0.0
 
     # ── 1. FAST PATH: Emergency keyword check ──────────────
     emergency_warnings = check_emergency_keywords(intake.symptom_text)
@@ -298,51 +424,73 @@ def run_triage(
             input_summary=f"{len(symptom_objects)} symptoms, age={intake.age}",
             output_summary=f"risk={risk_level.value}, confidence={confidence}",
         )
-        return risk_level, confidence, justification, all_factors, trace
+        return risk_level, confidence, justification, all_factors, 100.0, trace
 
-    # ── 2. SCORING PATH: Compute composite risk score ──────
+    # ── 2. SCORING PATH: Compute model-assisted risk score ──
     # Symptom score
     sym_score, sym_factors = _compute_symptom_score(symptom_objects)
-    total_score += sym_score
+    heuristic_raw_score += sym_score
     all_factors.extend(sym_factors)
 
     # Age score
     age_score, age_factors = _compute_age_score(intake.age)
-    total_score += age_score
+    heuristic_raw_score += age_score
     all_factors.extend(age_factors)
 
     # Comorbidity score
     comorbidity_score, comorbidity_factors = _compute_comorbidity_score(
         intake.comorbidities
     )
-    total_score += comorbidity_score
+    heuristic_raw_score += comorbidity_score
     all_factors.extend(comorbidity_factors)
 
     # Duration score
     duration_score, duration_factors = _compute_duration_score(intake.duration_days)
-    total_score += duration_score
+    heuristic_raw_score += duration_score
     all_factors.extend(duration_factors)
 
     # Medication count adjustment (polypharmacy risk)
     if len(intake.medications) >= 4:
         poly_score = 3.0
-        total_score += poly_score
+        heuristic_raw_score += poly_score
         all_factors.append(
             f"Polypharmacy risk ({len(intake.medications)} medications, "
             f"+{poly_score} pts)"
         )
 
+    heuristic_score = _normalize_heuristic_score(heuristic_raw_score)
+    profile_text = _build_risk_profile_text(intake, symptom_objects)
+    model_score, model_top_prob, model_used, model_factors = _extract_model_risk_score(
+        profile_text
+    )
+    all_factors.extend(model_factors)
+    if model_score is not None:
+        all_factors.append(
+            f"ML risk score ({model_used}, blended from symptom/demographic context): {model_score:.1f}/100"
+        )
+    else:
+        all_factors.append(
+            f"Heuristic fallback risk score: {heuristic_score:.1f}/100"
+        )
+
+    total_score = _blend_risk_scores(model_score, heuristic_score)
+
     # ── 3. DETERMINE RISK LEVEL ────────────────────────────
     risk_level = _score_to_risk_level(total_score)
     confidence = _compute_confidence(
-        total_score, risk_level, len(symptom_objects)
+        total_score,
+        risk_level,
+        len(symptom_objects),
+        model_top_prob=model_top_prob,
     )
 
     # ── 4. BUILD JUSTIFICATION ─────────────────────────────
     symptom_names = [s.name for s in symptom_objects]
+    model_score_text = f"{model_score:.1f}/100" if model_score is not None else "n/a"
     justification = (
         f"{risk_level.value.upper()} — "
         f"Risk score: {total_score:.1f}/100. "
+        f"Model signal: {model_score_text}, heuristic signal: {heuristic_score:.1f}/100. "
         f"Symptoms: {', '.join(symptom_names)}. "
         f"Patient: age {intake.age}, sex {intake.sex}"
     )
@@ -387,4 +535,4 @@ def run_triage(
                        f"score={total_score:.1f}",
     )
 
-    return risk_level, confidence, justification, all_factors, trace
+    return risk_level, confidence, justification, all_factors, round(total_score, 1), trace

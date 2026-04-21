@@ -17,8 +17,10 @@ from __future__ import annotations
 
 import hashlib
 import uuid
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from backend.config import settings
@@ -71,6 +73,7 @@ class PipelineState:
     symptom_objects: list[SymptomObject] = field(default_factory=list)
     risk_level: Optional[RiskLevel] = None
     risk_confidence: float = 0.0
+    risk_score: float = 0.0
     triage_justification: str = ""
     risk_factors: list[str] = field(default_factory=list)
 
@@ -146,6 +149,7 @@ def run_pipeline(intake: PatientIntake) -> PipelineState:
             state.risk_confidence,
             state.triage_justification,
             state.risk_factors,
+            state.risk_score,
             trace,
         ) = run_triage(intake, state.symptom_objects)
         state.agent_traces.append(trace)
@@ -227,8 +231,11 @@ def run_pipeline(intake: PatientIntake) -> PipelineState:
         recommendation, trace = synthesize_recommendation(
             session_id=state.session_id,
             patient_hash=state.patient_hash,
+            intake=intake,
+            symptom_objects=state.symptom_objects,
             risk_level=state.risk_level,
             risk_confidence=state.risk_confidence,
+            risk_score=state.risk_score,
             triage_justification=state.triage_justification,
             risk_factors=state.risk_factors,
             care_steps=state.care_steps,
@@ -303,7 +310,20 @@ def _fallback_triage(
             state.agent_traces.append(trace)
 
         # Build minimal recommendation
-        from backend.schemas.recommendation import Explainability
+        from backend.schemas.recommendation import Explainability, DoctorRecommendation
+
+        fallback_doctor = DoctorRecommendation(
+            assignment_id=f"DOC-FALLBACK-{state.session_id[-4:].upper()}",
+            doctor_name="Assigned General Medicine Specialist",
+            specialty="General Medicine",
+            consultation_mode="teleconsult",
+            next_available_window="Scheduled consult: within 24 hours",
+            urgency_note="Fallback mode enabled; physician review is recommended.",
+            automation_locked=True,
+            premium_feature="premium_auto_assignment",
+            best_modality=None,
+            modality_recommendations=[],
+        )
 
         state.recommendation = CareRecommendation(
             session_id=state.session_id,
@@ -312,6 +332,7 @@ def _fallback_triage(
             pipeline_status=PipelineStatus.ERROR,
             risk_level=state.risk_level,
             risk_confidence=state.risk_confidence,
+            risk_score=state.risk_score,
             triage_justification=(
                 f"{state.triage_justification} "
                 f"[FALLBACK MODE: Full pipeline encountered an error: {error_msg}. "
@@ -322,6 +343,7 @@ def _fallback_triage(
             warnings=state.warnings,
             provenance=[],
             translations=[],
+            doctor_recommendation=fallback_doctor,
             explainability=Explainability(
                 risk_factors=state.risk_factors,
                 risk_adjustments=[f"FALLBACK: Pipeline error — {error_msg}"],
@@ -367,6 +389,42 @@ def get_all_sessions() -> list[str]:
 
 # Audit log for clinician feedback
 _audit_log: list[dict] = []
+_DATA_DIR = Path(__file__).resolve().parent / "data"
+_AUDIT_FILE = _DATA_DIR / "audit_log.jsonl"
+
+
+def _load_audit_log_from_disk() -> list[dict]:
+    """Load persisted audit entries from disk if present."""
+    if not _AUDIT_FILE.exists():
+        return []
+
+    entries: list[dict] = []
+    try:
+        for line in _AUDIT_FILE.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    except OSError:
+        return []
+    return entries
+
+
+def _append_audit_entry_to_disk(entry: dict) -> None:
+    """Append one audit entry to the JSONL file."""
+    try:
+        _DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with _AUDIT_FILE.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError:
+        # Keep runtime behavior even if disk persistence fails.
+        pass
+
+
+_audit_log = _load_audit_log_from_disk()
 
 
 def store_audit_entry(entry: dict) -> str:
@@ -375,6 +433,7 @@ def store_audit_entry(entry: dict) -> str:
     entry["audit_id"] = audit_id
     entry["timestamp"] = datetime.utcnow().isoformat()
     _audit_log.append(entry)
+    _append_audit_entry_to_disk(entry)
     return audit_id
 
 

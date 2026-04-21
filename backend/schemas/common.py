@@ -170,3 +170,15 @@ class AuditEntry(BaseModel):
     original_recommendation: Optional[str] = None
     edited_recommendation: Optional[str] = None
     rationale: Optional[str] = None
+
+
+class TextTranslationRequest(BaseModel):
+    """Batch translation request for glossary-based localization."""
+    language_code: str = Field(..., description="Target language code")
+    texts: list[str] = Field(default_factory=list, description="Strings to translate")
+
+
+class TextTranslationResponse(BaseModel):
+    """Batch translation response for glossary-based localization."""
+    language_code: str = Field(..., description="Target language code")
+    translated_texts: list[str] = Field(default_factory=list, description="Translated strings")

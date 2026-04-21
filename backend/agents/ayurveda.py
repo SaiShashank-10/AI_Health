@@ -596,7 +596,7 @@ def generate_ayurveda_plan(
     )
 
     # Build title
-    symptom_names = [s.name for s in symptom_objects[:3]]
+    symptom_names = [s.name.replace("_", " ") for s in symptom_objects[:3]]
     title = (
         f"Ayurvedic Care Plan ({dominant_dosha.value.title()} Dosha Focus) "
         f"— {', '.join(symptom_names)}"

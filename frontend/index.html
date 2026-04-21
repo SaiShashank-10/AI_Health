@@ -1,353 +1,342 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="AI Integrative Multilingual Telehealth Orchestrator — Hybrid Clinical Decision Support across Allopathic, Ayurvedic, and Home-Remedial Systems.">
-    <title>AI Telehealth Orchestrator — Integrative Clinical Intelligence</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="description" content="AI Medic — Integrative Multilingual Telehealth Orchestrator. Get AI-powered clinical decisions across Allopathy, Ayurveda, and Home Remedies.">
+    <meta name="theme-color" content="#0B1220">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AI Medic">
+    <title>AI Medic — Smart Health Assistant</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <!-- Three.js CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Styles -->
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
 
-    <!-- ═══ THREE.JS CANVAS (BACKGROUND) ═══ -->
-    <canvas id="three-canvas"></canvas>
+    <!-- ═══ TOP BAR ═══ -->
+    <header class="top-bar">
+        <div class="top-bar-left">
+            <svg class="brand-icon" width="28" height="28" viewBox="0 0 32 32" fill="none">
+                <rect width="32" height="32" rx="8" fill="url(#brandGrad)"/>
+                <path d="M16 8v16M8 16h16" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+                <defs><linearGradient id="brandGrad" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#0F766E"/><stop offset="1" stop-color="#047857"/></linearGradient></defs>
+            </svg>
+            <span class="brand-name">AI Medic</span>
+        </div>
+        <div class="top-bar-right">
+            <div class="status-dot online"></div>
+            <select id="lang-select" class="lang-select" aria-label="Language">
+                <option value="en">EN</option>
+                <option value="hi">हि</option>
+                <option value="ta">த</option>
+                <option value="te">తె</option>
+                <option value="bn">বা</option>
+                <option value="mr">म</option>
+            </select>
+            <button class="icon-btn" id="btn-theme" aria-label="Toggle Theme">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
+        </div>
+    </header>
 
-    <!-- ═══ MAIN APPLICATION OVERLAY ═══ -->
-    <div id="app-overlay">
-
-        <!-- ── HEADER / NAV BAR ── -->
-        <header id="app-header">
-            <div class="header-left">
-                <div class="logo-icon" id="logo-pulse">
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                        <circle cx="16" cy="16" r="14" stroke="url(#logoGrad)" stroke-width="2" fill="none"/>
-                        <path d="M16 8 L16 24 M8 16 L24 16" stroke="url(#logoGrad)" stroke-width="2" stroke-linecap="round"/>
-                        <circle cx="16" cy="16" r="4" fill="url(#logoGrad)" opacity="0.6"/>
-                        <defs>
-                            <linearGradient id="logoGrad" x1="0" y1="0" x2="32" y2="32">
-                                <stop offset="0%" stop-color="#00F5D4"/>
-                                <stop offset="100%" stop-color="#7B61FF"/>
-                            </linearGradient>
-                        </defs>
-                    </svg>
-                </div>
-                <div class="header-text">
-                    <h1 id="app-title">AI Telehealth Orchestrator</h1>
-                    <p class="header-subtitle">Integrative Clinical Intelligence System</p>
-                </div>
+    <!-- ═══ PWA INSTALL BANNER ═══ -->
+    <div id="pwa-install-banner" class="pwa-banner" style="display:none;">
+        <div class="pwa-banner-content">
+            <span class="pwa-banner-icon">📲</span>
+            <div class="pwa-banner-text">
+                <strong>Install AI Medic</strong>
+                <small>Add to home screen for quick access</small>
             </div>
-            <div class="header-right">
-                <div class="status-badge" id="system-status">
-                    <span class="status-dot"></span>
-                    <span class="status-text">System Online</span>
-                </div>
-                <button class="btn-icon" id="btn-new-session" title="New Session" style="display:none;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-            </div>
-        </header>
-
-        <!-- ═══ SECTION 1: INTAKE FORM ═══ -->
-        <section id="section-intake" class="section active">
-            <div class="intake-container glass-card">
-                <div class="intake-header">
-                    <h2>Patient Consultation</h2>
-                    <p class="intake-subtitle">Complete the intake form to receive an AI-powered integrative care recommendation</p>
-                    <!-- Step Indicators -->
-                    <div class="step-indicators">
-                        <div class="step-dot active" data-step="1"><span>1</span><small>Demographics</small></div>
-                        <div class="step-line active"></div>
-                        <div class="step-dot" data-step="2"><span>2</span><small>Symptoms</small></div>
-                        <div class="step-line"></div>
-                        <div class="step-dot" data-step="3"><span>3</span><small>History</small></div>
-                        <div class="step-line"></div>
-                        <div class="step-dot" data-step="4"><span>4</span><small>Preferences</small></div>
-                    </div>
-                </div>
-
-                <form id="intake-form" autocomplete="off">
-                    <!-- STEP 1: Demographics -->
-                    <div class="form-step active" data-step="1">
-                        <div class="form-group">
-                            <label for="inp-age">Age <span class="required">*</span></label>
-                            <input type="number" id="inp-age" name="age" min="0" max="150" placeholder="e.g., 42" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="inp-sex">Biological Sex <span class="required">*</span></label>
-                            <select id="inp-sex" name="sex" required>
-                                <option value="" disabled selected>Select...</option>
-                                <option value="M">Male</option>
-                                <option value="F">Female</option>
-                                <option value="OTHER">Other</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="inp-language">Preferred Language</label>
-                            <select id="inp-language" name="language_pref">
-                                <option value="en">English</option>
-                                <option value="hi">Hindi (हिंदी)</option>
-                                <option value="ta">Tamil (தமிழ்)</option>
-                                <option value="te">Telugu (తెలుగు)</option>
-                                <option value="bn">Bengali (বাংলা)</option>
-                                <option value="mr">Marathi (मराठी)</option>
-                            </select>
-                        </div>
-                        <div class="form-nav">
-                            <div></div>
-                            <button type="button" class="btn-primary btn-next" data-next="2">Next →</button>
-                        </div>
-                    </div>
-
-                    <!-- STEP 2: Symptoms -->
-                    <div class="form-step" data-step="2">
-                        <div class="form-group">
-                            <label for="inp-symptoms">Describe your symptoms <span class="required">*</span></label>
-                            <textarea id="inp-symptoms" name="symptom_text" rows="4" placeholder="e.g., Fever and headache for 3 days, joint pain in knees... (you can type in Hindi, Tamil, or any supported language)" required></textarea>
-                            <small class="hint">Supports multilingual input — Hindi, Tamil, Telugu, Bengali, Marathi</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="inp-duration">Duration (days)</label>
-                            <input type="number" id="inp-duration" name="duration_days" min="0" max="365" placeholder="e.g., 3">
-                        </div>
-                        <div class="form-nav">
-                            <button type="button" class="btn-secondary btn-prev" data-prev="1">← Back</button>
-                            <button type="button" class="btn-primary btn-next" data-next="3">Next →</button>
-                        </div>
-                    </div>
-
-                    <!-- STEP 3: Medical History -->
-                    <div class="form-step" data-step="3">
-                        <div class="form-group">
-                            <label for="inp-comorbidities">Pre-existing Conditions</label>
-                            <input type="text" id="inp-comorbidities" name="comorbidities" placeholder="e.g., hypertension, diabetes (comma-separated)">
-                        </div>
-                        <div class="form-group">
-                            <label for="inp-medications">Current Medications</label>
-                            <input type="text" id="inp-medications" name="medications" placeholder="e.g., amlodipine, metformin (comma-separated)">
-                        </div>
-                        <div class="form-group">
-                            <label for="inp-allergies">Known Allergies</label>
-                            <input type="text" id="inp-allergies" name="allergies" placeholder="e.g., penicillin (comma-separated)">
-                        </div>
-                        <div class="form-nav">
-                            <button type="button" class="btn-secondary btn-prev" data-prev="2">← Back</button>
-                            <button type="button" class="btn-primary btn-next" data-next="4">Next →</button>
-                        </div>
-                    </div>
-
-                    <!-- STEP 4: Preferences -->
-                    <div class="form-step" data-step="4">
-                        <div class="form-group">
-                            <label>Preferred Medical Systems</label>
-                            <div class="modality-grid">
-                                <label class="modality-checkbox checked">
-                                    <input type="checkbox" name="modality" value="allopathy" checked>
-                                    <div class="modality-card">
-                                        <div class="modality-icon">🏥</div>
-                                        <span>Allopathy</span>
-                                        <small>Modern Medicine</small>
-                                    </div>
-                                </label>
-                                <label class="modality-checkbox">
-                                    <input type="checkbox" name="modality" value="ayurveda">
-                                    <div class="modality-card">
-                                        <div class="modality-icon">🌿</div>
-                                        <span>Ayurveda</span>
-                                        <small>Traditional Indian</small>
-                                    </div>
-                                </label>
-                                <label class="modality-checkbox disabled">
-                                    <input type="checkbox" name="modality" value="homeopathy" disabled>
-                                    <div class="modality-card">
-                                        <div class="modality-icon">💧</div>
-                                        <span>Homeopathy</span>
-                                        <small>Coming Soon</small>
-                                    </div>
-                                </label>
-                                <label class="modality-checkbox disabled">
-                                    <input type="checkbox" name="modality" value="home_remedial" disabled>
-                                    <div class="modality-card">
-                                        <div class="modality-icon">🏠</div>
-                                        <span>Home Remedies</span>
-                                        <small>Coming Soon</small>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="inp-lifestyle">Lifestyle Notes (optional)</label>
-                            <textarea id="inp-lifestyle" name="lifestyle_notes" rows="2" placeholder="e.g., Vegetarian diet, moderate exercise, high stress job"></textarea>
-                        </div>
-                        <div class="form-nav">
-                            <button type="button" class="btn-secondary btn-prev" data-prev="3">← Back</button>
-                            <button type="submit" class="btn-submit" id="btn-submit">
-                                <span class="btn-text">Run AI Analysis</span>
-                                <span class="btn-loader" style="display:none;"></span>
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </section>
-
-        <!-- ═══ SECTION 2: PIPELINE VISUALIZATION ═══ -->
-        <section id="section-pipeline" class="section">
-            <div class="pipeline-container">
-                <h2 class="section-title">Agent Pipeline</h2>
-                <p class="pipeline-subtitle">Processing through 8 specialized AI agents...</p>
-                <div class="pipeline-nodes">
-                    <div class="pipeline-node" data-agent="normalization">
-                        <div class="node-ring"><div class="node-icon">🔬</div></div>
-                        <span class="node-label">Normalization</span>
-                        <small class="node-status">Pending</small>
-                    </div>
-                    <div class="pipeline-connector"></div>
-                    <div class="pipeline-node" data-agent="triage">
-                        <div class="node-ring"><div class="node-icon">🚦</div></div>
-                        <span class="node-label">Triage</span>
-                        <small class="node-status">Pending</small>
-                    </div>
-                    <div class="pipeline-connector"></div>
-                    <div class="pipeline-node" data-agent="orchestrator">
-                        <div class="node-ring"><div class="node-icon">🧠</div></div>
-                        <span class="node-label">Orchestrator</span>
-                        <small class="node-status">Pending</small>
-                    </div>
-                    <div class="pipeline-connector"></div>
-                    <div class="pipeline-node" data-agent="allopathy_specialist">
-                        <div class="node-ring"><div class="node-icon">🏥</div></div>
-                        <span class="node-label">Allopathy</span>
-                        <small class="node-status">Pending</small>
-                    </div>
-                    <div class="pipeline-connector"></div>
-                    <div class="pipeline-node" data-agent="ayurveda_specialist">
-                        <div class="node-ring"><div class="node-icon">🌿</div></div>
-                        <span class="node-label">Ayurveda</span>
-                        <small class="node-status">Pending</small>
-                    </div>
-                    <div class="pipeline-connector"></div>
-                    <div class="pipeline-node" data-agent="safety_conflict">
-                        <div class="node-ring"><div class="node-icon">🛡️</div></div>
-                        <span class="node-label">Safety</span>
-                        <small class="node-status">Pending</small>
-                    </div>
-                    <div class="pipeline-connector"></div>
-                    <div class="pipeline-node" data-agent="recommendation_synthesizer">
-                        <div class="node-ring"><div class="node-icon">⚗️</div></div>
-                        <span class="node-label">Synthesizer</span>
-                        <small class="node-status">Pending</small>
-                    </div>
-                    <div class="pipeline-connector"></div>
-                    <div class="pipeline-node" data-agent="translation_agent">
-                        <div class="node-ring"><div class="node-icon">🌐</div></div>
-                        <span class="node-label">Translation</span>
-                        <small class="node-status">Pending</small>
-                    </div>
-                </div>
-                <div class="pipeline-progress">
-                    <div class="progress-bar"><div class="progress-fill" id="pipeline-progress-fill"></div></div>
-                    <span class="progress-text" id="pipeline-progress-text">0 / 8 agents</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- ═══ SECTION 3: RESULTS DASHBOARD ═══ -->
-        <section id="section-results" class="section">
-            <div class="results-container">
-                <!-- Top: Risk badge -->
-                <div class="risk-banner glass-card" id="risk-banner">
-                    <div class="risk-content">
-                        <div class="risk-badge" id="risk-badge">
-                            <span class="risk-level" id="risk-level-text">—</span>
-                        </div>
-                        <div class="risk-details">
-                            <h2 id="risk-title">Risk Assessment</h2>
-                            <p id="risk-justification" class="risk-justification">—</p>
-                            <div class="risk-meta">
-                                <span class="meta-chip" id="risk-confidence">Confidence: —</span>
-                                <span class="meta-chip" id="risk-session">Session: —</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Grid: Results cards -->
-                <div class="results-grid">
-                    <!-- Care Path -->
-                    <div class="result-card glass-card" id="card-carepath">
-                        <div class="card-header" onclick="toggleCard('card-carepath')">
-                            <h3>🗺️ Care Path</h3>
-                            <span class="card-toggle">▼</span>
-                        </div>
-                        <div class="card-body" id="carepath-body"></div>
-                    </div>
-
-                    <!-- Plan Segments -->
-                    <div class="result-card glass-card" id="card-plans">
-                        <div class="card-header" onclick="toggleCard('card-plans')">
-                            <h3>📋 Treatment Plans</h3>
-                            <span class="card-toggle">▼</span>
-                        </div>
-                        <div class="card-body" id="plans-body"></div>
-                    </div>
-
-                    <!-- Safety Warnings -->
-                    <div class="result-card glass-card" id="card-warnings">
-                        <div class="card-header" onclick="toggleCard('card-warnings')">
-                            <h3>⚠️ Safety Warnings</h3>
-                            <span class="card-toggle">▼</span>
-                        </div>
-                        <div class="card-body" id="warnings-body"></div>
-                    </div>
-
-                    <!-- Evidence -->
-                    <div class="result-card glass-card" id="card-evidence">
-                        <div class="card-header" onclick="toggleCard('card-evidence')">
-                            <h3>📚 Evidence & Provenance</h3>
-                            <span class="card-toggle">▼</span>
-                        </div>
-                        <div class="card-body" id="evidence-body"></div>
-                    </div>
-
-                    <!-- Translations -->
-                    <div class="result-card glass-card" id="card-translations">
-                        <div class="card-header" onclick="toggleCard('card-translations')">
-                            <h3>🌐 Multilingual Output</h3>
-                            <span class="card-toggle">▼</span>
-                        </div>
-                        <div class="card-body" id="translations-body"></div>
-                    </div>
-
-                    <!-- Explainability -->
-                    <div class="result-card glass-card" id="card-explainability">
-                        <div class="card-header" onclick="toggleCard('card-explainability')">
-                            <h3>🔍 Explainability & Trace</h3>
-                            <span class="card-toggle">▼</span>
-                        </div>
-                        <div class="card-body" id="explainability-body"></div>
-                    </div>
-                </div>
-
-                <!-- Disclaimer -->
-                <div class="disclaimer glass-card">
-                    <p>⚕️ <strong>Disclaimer:</strong> This is an AI-generated recommendation for demonstration purposes. Always consult a qualified healthcare professional before starting any treatment. This system does not replace clinical judgment.</p>
-                </div>
-            </div>
-        </section>
+            <button id="pwa-install-btn" class="pwa-install-btn">
+                <span>Install</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            </button>
+            <button id="pwa-dismiss-btn" class="icon-btn" aria-label="Dismiss">✕</button>
+        </div>
     </div>
 
+    <!-- ═══ SCREEN: HOME / INTAKE ═══ -->
+    <main id="screen-home" class="screen active">
+        <div class="screen-content">
+
+            <!-- Greeting Card -->
+            <div class="greeting-card" id="greeting-card">
+                <div class="greeting-emoji">👋</div>
+                <h2 class="greeting-title" id="greeting-title">How are you feeling today?</h2>
+                <p class="greeting-sub" id="greeting-sub">Describe your symptoms and get AI-powered health guidance in seconds.</p>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="quick-stats">
+                <div class="stat-pill"><span class="stat-icon">🤖</span><span class="stat-value">10</span><span class="stat-label" data-i18n="metricAgents">AI Agents</span></div>
+                <div class="stat-pill"><span class="stat-icon">🌍</span><span class="stat-value">6</span><span class="stat-label" data-i18n="metricLanguages">Languages</span></div>
+                <div class="stat-pill"><span class="stat-icon">✅</span><span class="stat-value" id="stat-status">Online</span><span class="stat-label" data-i18n="metricStatus">System</span></div>
+            </div>
+
+            <!-- Intake Form -->
+            <form id="intake-form" autocomplete="off">
+                <!-- Step Progress -->
+                <div class="step-progress">
+                    <div class="step-progress-bar"><div class="step-progress-fill" id="step-fill"></div></div>
+                    <span class="step-progress-text" id="step-text">Step 1 of 4</span>
+                </div>
+
+                <!-- STEP 1: Demographics -->
+                <div class="form-step active" data-step="1">
+                    <div class="step-header">
+                        <span class="step-number">01</span>
+                        <h3 class="step-title" data-i18n="stepDemographics">Demographics</h3>
+                    </div>
+                    <div class="field">
+                        <label for="inp-age" data-i18n="ageLabel">Age <span class="req">*</span></label>
+                        <input type="number" id="inp-age" name="age" min="0" max="150" placeholder="e.g., 42" required inputmode="numeric">
+                    </div>
+                    <div class="field">
+                        <label for="inp-sex" data-i18n="sexLabel">Biological Sex <span class="req">*</span></label>
+                        <select id="inp-sex" name="sex" required>
+                            <option value="" disabled selected>Select...</option>
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="OTHER">Other</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="inp-language" data-i18n="languageLabel">Preferred Language</label>
+                        <select id="inp-language" name="language_pref">
+                            <option value="en">English</option>
+                            <option value="hi">Hindi (हिंदी)</option>
+                            <option value="ta">Tamil (தமிழ்)</option>
+                            <option value="te">Telugu (తెలుగు)</option>
+                            <option value="bn">Bengali (বাংলা)</option>
+                            <option value="mr">Marathi (मराठी)</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <div></div>
+                        <button type="button" class="btn-next" data-next="2">Next →</button>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Symptoms -->
+                <div class="form-step" data-step="2">
+                    <div class="step-header">
+                        <span class="step-number">02</span>
+                        <h3 class="step-title" data-i18n="stepSymptoms">Symptoms</h3>
+                    </div>
+                    <div class="field">
+                        <label for="inp-symptoms" data-i18n="symptomsLabel">Describe your symptoms <span class="req">*</span></label>
+                        <textarea id="inp-symptoms" name="symptom_text" rows="4" placeholder="e.g., Fever and headache for 3 days, joint pain..." required></textarea>
+                        <small class="field-hint" data-i18n="symptomsHint">You can type in Hindi, Tamil, Telugu, Bengali, or Marathi</small>
+                    </div>
+                    <div class="field">
+                        <label for="inp-duration" data-i18n="durationLabel">Duration (days)</label>
+                        <input type="number" id="inp-duration" name="duration_days" min="0" max="365" placeholder="e.g., 3" inputmode="numeric">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-back" data-prev="1">← Back</button>
+                        <button type="button" class="btn-next" data-next="3">Next →</button>
+                    </div>
+                </div>
+
+                <!-- STEP 3: History -->
+                <div class="form-step" data-step="3">
+                    <div class="step-header">
+                        <span class="step-number">03</span>
+                        <h3 class="step-title" data-i18n="stepHistory">Medical History</h3>
+                    </div>
+                    <div class="field">
+                        <label for="inp-comorbidities" data-i18n="conditionsLabel">Pre-existing Conditions</label>
+                        <input type="text" id="inp-comorbidities" name="comorbidities" placeholder="e.g., hypertension, diabetes">
+                    </div>
+                    <div class="field">
+                        <label for="inp-medications" data-i18n="medsLabel">Current Medications</label>
+                        <input type="text" id="inp-medications" name="medications" placeholder="e.g., amlodipine, metformin">
+                    </div>
+                    <div class="field">
+                        <label for="inp-allergies" data-i18n="allergiesLabel">Known Allergies</label>
+                        <input type="text" id="inp-allergies" name="allergies" placeholder="e.g., penicillin">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-back" data-prev="2">← Back</button>
+                        <button type="button" class="btn-next" data-next="4">Next →</button>
+                    </div>
+                </div>
+
+                <!-- STEP 4: Preferences -->
+                <div class="form-step" data-step="4">
+                    <div class="step-header">
+                        <span class="step-number">04</span>
+                        <h3 class="step-title" data-i18n="stepPreferences">AI Treatment Recommendation</h3>
+                    </div>
+                    <div class="field">
+                        <label data-i18n="systemsLabel">How the recommendation works</label>
+                        <div class="analysis-note">
+                            The AI will analyze your symptoms, duration, age, sex, comorbidities, medications, allergies, and lifestyle notes to infer the most appropriate doctor type and treatment direction.
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="inp-lifestyle" data-i18n="lifestyleLabel">Lifestyle Notes (optional)</label>
+                        <textarea id="inp-lifestyle" name="lifestyle_notes" rows="2" placeholder="e.g., Vegetarian diet, moderate exercise"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-back" data-prev="3">← Back</button>
+                        <button type="submit" class="btn-submit" id="btn-submit">
+                            <span class="btn-submit-text">Run AI Analysis</span>
+                            <span class="btn-submit-loader" style="display:none;"></span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- ═══ SCREEN: ANALYSIS / PIPELINE ═══ -->
+    <main id="screen-analysis" class="screen">
+        <div class="screen-content">
+            <div class="analysis-card">
+                <div class="analysis-ring-wrap">
+                    <svg class="analysis-ring" viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r="54" stroke="var(--border)" stroke-width="8" fill="none"/>
+                        <circle cx="60" cy="60" r="54" stroke="url(#ringGrad)" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="339.292" stroke-dashoffset="339.292" id="progress-ring"/>
+                        <defs><linearGradient id="ringGrad" x1="0" y1="0" x2="120" y2="120"><stop stop-color="#0F766E"/><stop offset="1" stop-color="#D97706"/></linearGradient></defs>
+                    </svg>
+                    <div class="analysis-ring-center">
+                        <span class="analysis-percent" id="analysis-percent">0%</span>
+                    </div>
+                </div>
+                <p class="analysis-status" id="analysis-status">Waiting for analysis...</p>
+                <p class="analysis-agent" id="analysis-agent"></p>
+            </div>
+
+            <div class="agent-checklist" id="agent-checklist">
+                <div class="agent-item" data-agent="normalization"><span class="agent-check">○</span><span class="agent-name">Normalization</span></div>
+                <div class="agent-item" data-agent="triage"><span class="agent-check">○</span><span class="agent-name">Triage</span></div>
+                <div class="agent-item" data-agent="orchestrator"><span class="agent-check">○</span><span class="agent-name">Orchestrator</span></div>
+                <div class="agent-item" data-agent="allopathy_specialist"><span class="agent-check">○</span><span class="agent-name">Allopathy</span></div>
+                <div class="agent-item" data-agent="ayurveda_specialist"><span class="agent-check">○</span><span class="agent-name">Ayurveda</span></div>
+                <div class="agent-item" data-agent="homeopathy_specialist"><span class="agent-check">○</span><span class="agent-name">Homeopathy</span></div>
+                <div class="agent-item" data-agent="home_remedial_specialist"><span class="agent-check">○</span><span class="agent-name">Home Remedies</span></div>
+                <div class="agent-item" data-agent="safety_conflict"><span class="agent-check">○</span><span class="agent-name">Safety</span></div>
+                <div class="agent-item" data-agent="recommendation_synthesizer"><span class="agent-check">○</span><span class="agent-name">Synthesizer</span></div>
+                <div class="agent-item" data-agent="translation_agent"><span class="agent-check">○</span><span class="agent-name">Translation</span></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ═══ SCREEN: RESULTS ═══ -->
+    <main id="screen-results" class="screen">
+        <div class="screen-content">
+
+            <!-- Risk Banner -->
+            <div class="risk-card" id="risk-card">
+                <div class="risk-card-header">
+                    <span class="risk-badge-pill" id="risk-badge">—</span>
+                    <span class="risk-score" id="risk-score">Score: —/100</span>
+                    <span class="risk-confidence" id="risk-conf">Confidence: —</span>
+                </div>
+                <p class="risk-justification" id="risk-just">—</p>
+                <p class="risk-action" id="risk-action">—</p>
+            </div>
+
+            <!-- Report Hero -->
+            <section class="report-hero" id="report-hero"></section>
+
+            <!-- Doctor Card -->
+            <div class="result-section" id="section-doctor">
+                <button class="section-toggle" data-target="doctor-content" aria-expanded="true">
+                    <span class="section-icon">👨‍⚕️</span>
+                    <span class="section-label">Your Doctor</span>
+                    <span class="section-chevron">▾</span>
+                </button>
+                <div class="section-content open" id="doctor-content"></div>
+            </div>
+
+            <!-- Care Path -->
+            <div class="result-section" id="section-carepath">
+                <button class="section-toggle" data-target="carepath-content" aria-expanded="true">
+                    <span class="section-icon">🗺️</span>
+                    <span class="section-label">Care Path</span>
+                    <span class="section-badge" id="carepath-count">0</span>
+                    <span class="section-chevron">▾</span>
+                </button>
+                <div class="section-content open" id="carepath-content"></div>
+            </div>
+
+            <!-- Treatment Plans -->
+            <div class="result-section" id="section-plans">
+                <button class="section-toggle" data-target="plans-content" aria-expanded="true">
+                    <span class="section-icon">🧭</span>
+                    <span class="section-label">Treatment Plans</span>
+                    <span class="section-badge" id="plans-count">0</span>
+                    <span class="section-chevron">▾</span>
+                </button>
+                <div class="section-content open" id="plans-content"></div>
+            </div>
+
+            <!-- Safety Warnings -->
+            <div class="result-section" id="section-warnings">
+                <button class="section-toggle" data-target="warnings-content" aria-expanded="false">
+                    <span class="section-icon">⚠️</span>
+                    <span class="section-label">Safety Warnings</span>
+                    <span class="section-badge warn" id="warnings-count">0</span>
+                    <span class="section-chevron">▾</span>
+                </button>
+                <div class="section-content" id="warnings-content"></div>
+            </div>
+
+            <!-- Evidence -->
+            <div class="result-section" id="section-evidence">
+                <button class="section-toggle" data-target="evidence-content" aria-expanded="false">
+                    <span class="section-icon">📚</span>
+                    <span class="section-label">Evidence</span>
+                    <span class="section-badge" id="evidence-count">0</span>
+                    <span class="section-chevron">▾</span>
+                </button>
+                <div class="section-content" id="evidence-content"></div>
+            </div>
+
+            <!-- Disclaimer -->
+            <div class="disclaimer-bar">
+                <p id="disclaimer-text">⚕️ <strong>Disclaimer:</strong> AI-generated recommendation for demonstration purposes. Always consult a qualified healthcare professional. This system does not replace clinical judgment.</p>
+            </div>
+
+            <!-- New Session -->
+            <button class="btn-new-session" id="btn-new-session" style="display:none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>New Consultation</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- ═══ BOTTOM NAVIGATION ═══ -->
+    <nav id="bottom-nav">
+        <button class="nav-tab active" data-screen="screen-home" id="nav-home">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Home</span>
+        </button>
+        <button class="nav-tab" data-screen="screen-analysis" id="nav-analysis">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span>Analysis</span>
+        </button>
+        <button class="nav-tab" data-screen="screen-results" id="nav-results">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span>Report</span>
+        </button>
+    </nav>
+
     <!-- Scripts -->
-    <script src="/static/js/three-scene.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

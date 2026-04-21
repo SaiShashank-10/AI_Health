@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from backend.schemas.common import (
     RiskLevel,
+    Modality,
     CareStep,
     PlanSegment,
     Warning,
@@ -58,6 +59,41 @@ class TranslationOutput(BaseModel):
     )
 
 
+class ModalityDoctorTypeRecommendation(BaseModel):
+    """Best-fit doctor type recommendation for a specific modality."""
+    modality: Modality = Field(..., description="Target medical modality")
+    doctor_type: str = Field(..., description="Recommended doctor type for this modality")
+    rationale: str = Field(..., description="Why this doctor type fits the current profile")
+    suitability_score: float = Field(..., ge=0.0, le=1.0, description="Suitability score")
+    recommended: bool = Field(False, description="Whether this modality is actively recommended")
+
+
+class DoctorRecommendation(BaseModel):
+    """Single automated doctor assignment for premium workflow."""
+    assignment_id: str = Field(..., description="Unique assignment identifier")
+    doctor_name: str = Field(..., description="Assigned doctor display name")
+    specialty: str = Field(..., description="Assigned specialty")
+    consultation_mode: str = Field(..., description="teleconsult | in-person | hybrid")
+    next_available_window: str = Field(..., description="Suggested consultation window")
+    urgency_note: str = Field(..., description="Triage-aware urgency guidance")
+    automation_locked: bool = Field(
+        True,
+        description="True when assignment is system-locked with no patient-side options",
+    )
+    premium_feature: str = Field(
+        "premium_auto_assignment",
+        description="Premium capability tag",
+    )
+    best_modality: Optional[Modality] = Field(
+        None,
+        description="Best overall modality for doctor assignment based on patient profile",
+    )
+    modality_recommendations: list[ModalityDoctorTypeRecommendation] = Field(
+        default_factory=list,
+        description="Profile-based doctor type recommendations for each modality",
+    )
+
+
 class CareRecommendation(BaseModel):
     """
     Complete Recommendation Output — the final product of the full agent pipeline.
@@ -83,6 +119,12 @@ class CareRecommendation(BaseModel):
         ge=0.0,
         le=1.0,
         description="Confidence score for the risk assessment",
+    )
+    risk_score: float = Field(
+        ...,
+        ge=0.0,
+        le=100.0,
+        description="Model-assisted risk score on a 0-100 scale",
     )
     triage_justification: str = Field(
         "",
@@ -117,6 +159,12 @@ class CareRecommendation(BaseModel):
     translations: list[TranslationOutput] = Field(
         default_factory=list,
         description="Localized versions of the care plan",
+    )
+
+    # ── Premium Automation ─────────────────────────────────
+    doctor_recommendation: Optional[DoctorRecommendation] = Field(
+        None,
+        description="Single automated doctor assignment (no patient-side choice list)",
     )
 
     # ── Explainability ──────────────────────────────────────

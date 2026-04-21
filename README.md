@@ -21,14 +21,14 @@
 
 The **AI Telehealth Orchestrator** is a production-ready, agentic AI system that processes patient symptoms through an **8-agent pipeline** to generate integrative, multi-modality care recommendations with full explainability and multilingual support.
 
-It combines **modern allopathic medicine** with **traditional Ayurvedic practices**, performing automated triage, herb-drug safety checks, evidence-based recommendation synthesis, and real-time translation into **6 Indian languages**.
+It combines **modern allopathic medicine** with **traditional Ayurvedic practices**, performing automated triage, herb-drug safety checks, evidence-based recommendation synthesis, and provider-backed real-time translation into **6 Indian languages**.
 
 ### ✨ Key Features
 
 | Feature | Description |
 |---------|-------------|
 | 🧠 **8-Agent Pipeline** | Normalization → Triage → Orchestrator → Allopathy → Ayurveda → Safety → Synthesizer → Translation |
-| 🌐 **Multilingual Input/Output** | Hindi, Tamil, Telugu, Bengali, Marathi + English (auto-detects medical terms) |
+| 🌐 **Multilingual Input/Output** | Hindi, Tamil, Telugu, Bengali, Marathi + English with provider-backed translation and clinical fallback |
 | 🛡️ **Safety Engine** | Herb-drug interaction checks, polypharmacy detection, pregnancy/age contraindications |
 | 📊 **Evidence-Based** | Citations from WHO, ICMR, NICE, AYUSH, CCRAS, Cochrane with reliability tiers (A/B/T) |
 | 🔍 **Explainability** | Full audit trace: risk factors, rule triggers, agent execution timeline |
@@ -72,8 +72,8 @@ It combines **modern allopathic medicine** with **traditional Ayurvedic practice
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │   Glossary   │  │ Safety Rules │  │   Evidence Base      │  │
-│  │  (6 langs)   │  │ (herb-drug)  │  │  (WHO/ICMR/CCRAS)   │  │
+│  │ Translation  │  │ Safety Rules │  │   Evidence Base      │  │
+│  │ Provider/API │  │ (herb-drug)  │  │  (WHO/ICMR/CCRAS)   │  │
 │  └──────────────┘  └──────────────┘  └──────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -102,6 +102,12 @@ source venv/bin/activate
 
 # 3. Install dependencies
 pip install -r requirements.txt
+
+# Optional: configure a real translation provider
+# TRANSLATION_PROVIDER=azure
+# TRANSLATOR_ENDPOINT=https://<your-resource>.cognitiveservices.azure.com
+# TRANSLATOR_KEY=<your-key>
+# TRANSLATOR_REGION=<your-region>
 
 # 4. Start the server
 uvicorn backend.main:app --host 127.0.0.1 --port 8000
@@ -134,6 +140,7 @@ docker-compose down
 | `GET` | `/api/recommendation/{session_id}` | Get full care recommendation (JSON) |
 | `POST` | `/api/feedback` | Submit clinician feedback (approve/reject/edit) |
 | `GET` | `/api/glossary/{lang_code}` | Get medical glossary for a language |
+| `POST` | `/api/translate/text` | Translate arbitrary text snippets using the active translation provider |
 | `GET` | `/api/languages` | List supported languages |
 | `GET` | `/api/sessions` | List all active sessions |
 | `GET` | `/api/audit` | View clinician feedback audit log |
@@ -152,7 +159,6 @@ curl -X POST http://localhost:8000/api/intake \
     "duration_days": 3,
     "comorbidities": ["hypertension"],
     "medications": ["amlodipine"],
-    "modality_preferences": ["allopathy", "ayurveda"],
     "language_pref": "hi"
   }'
 ```
@@ -176,7 +182,7 @@ Agentic AI Orchestrator/
 │   │   ├── ayurveda.py         # Dosha-aligned Ayurvedic care (14 conditions)
 │   │   ├── safety.py           # 6-check safety gate (herb-drug, polypharmacy, etc.)
 │   │   ├── synthesizer.py      # Evidence-ranked plan merging + explainability
-│   │   └── translation.py      # Glossary-based multilingual output
+│   │   └── translation.py      # Provider-backed multilingual output with clinical fallback
 │   ├── knowledge/
 │   │   ├── glossary.py         # 60+ medical terms in 6 languages
 │   │   ├── safety_rules.py     # Emergency detection, herb-drug interactions
@@ -211,7 +217,7 @@ This project uses **no external LLM API keys**. All 8 agents use robust, determi
 - **Ayurveda**: Dosha profiling (Vata/Pitta/Kapha) with 14-condition classical formulations
 - **Safety**: Cross-referencing herb-drug interactions from curated knowledge base
 
-> Future: Swap `LLM_PROVIDER=rule_simulation` → `LLM_PROVIDER=openai` in config to use live LLM inference.
+> Translation: Set `TRANSLATION_PROVIDER=azure` and provide Azure Translator credentials to enable full sentence translation; otherwise the app falls back to the clinical glossary translator.
 
 ---
 

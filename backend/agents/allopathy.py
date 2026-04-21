@@ -484,7 +484,7 @@ def generate_allopathy_plan(
     )
 
     # Build plan title
-    symptom_names = [s.name for s in symptom_objects[:3]]
+    symptom_names = [s.name.replace("_", " ") for s in symptom_objects[:3]]
     title = f"Allopathic Treatment Plan — {', '.join(symptom_names)}"
     if len(symptom_objects) > 3:
         title += f" (+{len(symptom_objects) - 3} more)"

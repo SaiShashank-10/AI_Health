@@ -13,3 +13,9 @@ python-dotenv
 
 # ── Utilities ───────────────────────────────────────────
 python-dateutil
+deep-translator
+
+# ── AI Recommendation ───────────────────────────────────
+transformers
+torch
+sentencepiece

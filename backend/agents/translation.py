@@ -27,12 +27,7 @@ from backend.schemas.recommendation import (
     CareRecommendation,
     TranslationOutput,
 )
-from backend.knowledge.glossary import (
-    translate_term,
-    translate_text_segment,
-    get_all_supported_languages,
-    MEDICAL_GLOSSARY,
-)
+from backend.services.translation_service import translate_texts
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -157,7 +152,7 @@ def _translate_recommendation_item(text: str, lang: str) -> str:
     """Translate a single recommendation line using glossary mapping."""
     if lang == "en":
         return text
-    return translate_text_segment(text, lang)
+    return translate_texts([text], lang)[0]
 
 
 def _translate_warning(warning: Warning, lang: str) -> str:
@@ -165,7 +160,7 @@ def _translate_warning(warning: Warning, lang: str) -> str:
     if lang == "en":
         return f"⚠️ [{warning.severity.upper()}] {warning.message}"
 
-    translated_msg = translate_text_segment(warning.message, lang)
+    translated_msg = translate_texts([warning.message], lang)[0]
     severity_map = {
         "high": {"hi": "उच्च", "ta": "அதிக", "te": "అధిక", "bn": "উচ্চ", "mr": "उच्च"},
         "medium": {"hi": "मध्यम", "ta": "நடுத்தர", "te": "మధ్యస్థ", "bn": "মাঝারি", "mr": "मध्यम"},
@@ -204,9 +199,7 @@ def _build_summary(
     ]
 
     if recommendation.triage_justification:
-        just_translated = translate_text_segment(
-            recommendation.triage_justification, lang
-        )
+        just_translated = translate_texts([recommendation.triage_justification], lang)[0]
         lines.append(just_translated)
         lines.append("")
 
@@ -214,7 +207,7 @@ def _build_summary(
     rec_label = LOCALIZED_PHRASES["recommendations"].get(lang, "Recommendations")
     lines.append(f"🏥 {rec_label}:")
     for seg in recommendation.plan_segments:
-        seg_title = translate_text_segment(seg.title, lang)
+        seg_title = translate_texts([seg.title], lang)[0]
         lines.append(f"  • {seg_title}")
     lines.append("")
 
@@ -224,7 +217,7 @@ def _build_summary(
     med_count = 0
     for seg in recommendation.plan_segments:
         for med in seg.medications[:3]:
-            med_translated = translate_text_segment(med, lang)
+            med_translated = translate_texts([med], lang)[0]
             lines.append(f"  • {med_translated}")
             med_count += 1
             if med_count >= 5:
@@ -245,7 +238,7 @@ def _build_summary(
     fu_label = LOCALIZED_PHRASES["follow_up"].get(lang, "Follow-up")
     for seg in recommendation.plan_segments[:1]:
         if seg.follow_up:
-            fu_translated = translate_text_segment(seg.follow_up, lang)
+            fu_translated = translate_texts([seg.follow_up], lang)[0]
             lines.append(f"📅 {fu_label}: {fu_translated}")
     lines.append("")
 

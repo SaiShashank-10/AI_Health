@@ -27,6 +27,7 @@ from backend.schemas.common import (
 )
 from backend.schemas.intake import PatientIntake
 from backend.config import settings
+from backend.services.doctor_recommender import infer_modality_scores
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -198,13 +199,18 @@ def build_care_path(
     rationale: list[str] = []
 
     symptom_names = [s.name for s in symptom_objects]
-    preferences = intake.modality_preferences
+    inferred_scores, inferred_preferences, recommendation_rationale, model_used = infer_modality_scores(
+        intake=intake,
+        symptom_objects=symptom_objects,
+        risk_level=risk_level,
+    )
+    preferences = inferred_preferences[: settings.MAX_PARALLEL_MODALITIES]
 
     # Step 1: Score all modalities
     modality_scores = _get_modality_scores(symptom_names, preferences)
-    rationale.append(
-        f"Modality scores: {modality_scores}"
-    )
+    rationale.append(f"AI-inferred treatment priorities: {preferences} (model={model_used})")
+    rationale.append(f"Profile analysis summary: {recommendation_rationale}")
+    rationale.append(f"Raw AI modality scores: {inferred_scores}")
 
     # Step 2: Select modalities based on risk and preferences
     selected = _select_modalities(

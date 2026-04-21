@@ -281,7 +281,7 @@ def normalize_intake(intake: PatientIntake) -> tuple[list[SymptomObject], AgentT
     # Step 4: If no terms detected, create a generic entry
     if not symptom_objects:
         symptom_objects.append(SymptomObject(
-            name="unspecified_symptom",
+            name="general_symptom_presentation",
             original_text=intake.symptom_text,
             icd_code="R68.89",  # Other general symptoms
             snomed_code=None,
