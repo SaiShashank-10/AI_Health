@@ -3,6 +3,8 @@ services:
     name: ai-telehealth-orchestrator
     # The environment type
     env: python
+    # Explicitly demand the free tier to bypass billing
+    plan: free
     # Build command to install dependencies
     buildCommand: "pip install -r requirements.txt"
     # Command to run the application
@@ -10,7 +12,7 @@ services:
     # Essential environment variables
     envVars:
       - key: PORT
-        value: 10000
+        value: "10000"
       - key: PYTHON_VERSION
         value: 3.10.0
       # IMPORTANT: HuggingFace 'bart-large-mnli' model uses >1.5GB of RAM.
