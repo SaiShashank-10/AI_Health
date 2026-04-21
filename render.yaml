@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: ai-telehealth-orchestrator
+    # The environment type
+    env: python
+    # Build command to install dependencies
+    buildCommand: "pip install -r requirements.txt"
+    # Command to run the application
+    startCommand: "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
+    # Essential environment variables
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      # IMPORTANT: HuggingFace 'bart-large-mnli' model uses >1.5GB of RAM.
+      # Render's free tier only has 512MB of RAM and will crash (OOM).
+      # Setting these to 'false' enables lightweight simulation for free-tier testing.
+      # If you upgrade your Render plan to 2GB RAM+, you can set these back to 'true'.
+      - key: ENABLE_HF_DOCTOR_RECOMMENDER
+        value: "false"
+      - key: ENABLE_HF_TRIAGE_MODEL
+        value: "false"
+      - key: ENABLE_HF_INPUT_VALIDATION
+        value: "false"
