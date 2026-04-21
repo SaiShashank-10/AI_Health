@@ -260,9 +260,7 @@
                 if (!recResp.ok) throw new Error('Failed to fetch recommendation');
 
                 const recommendation = await recResp.json();
-                activeRecommendation = recommendation;
-                resetLocalizedRecommendationCache();
-                await renderActiveRecommendation();
+                renderResults(recommendation);
                 showScreen('results');
                 btnNewSession.style.display = 'flex';
 
@@ -374,25 +372,11 @@
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  STATE CACHE
-    // ═══════════════════════════════════════════════════════════════
-
-    let localizedRecCache = {};
-
-    function resetLocalizedRecommendationCache() {
-        localizedRecCache = {};
-    }
-
-    async function renderActiveRecommendation() {
-        if (!activeRecommendation) return;
-        renderResults(activeRecommendation);
-    }
-
-    // ═══════════════════════════════════════════════════════════════
     //  RESULTS RENDERING
     // ═══════════════════════════════════════════════════════════════
 
     function renderResults(rec) {
+        activeRecommendation = rec;
         const lang = currentLanguage;
         const labels = RISK_LABELS[lang] || RISK_LABELS.en;
         const modLabels = MODALITY_LABELS[lang] || MODALITY_LABELS.en;
@@ -786,9 +770,7 @@
             localStorage.setItem('telehealth-language', currentLanguage);
             document.documentElement.lang = currentLanguage;
             // Re-render results if available
-            if (activeRecommendation) {
-                await renderActiveRecommendation();
-            }
+            if (activeRecommendation) renderResults(activeRecommendation);
         });
     }
 
